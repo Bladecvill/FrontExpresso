@@ -1,132 +1,129 @@
 // src/components/FormFazerTransferencia.jsx
-
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useData } from '../context/DataContext';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_URL = 'http://localhost:8080/api/transferencias';
 
-// Este componente recebe:
-// - clienteId: O ID do utilizador
-// - contasCorrente: A lista de contas (ex: Carteira, Nubank)
-// - metas: A lista de metas (ex: Viagem)
-// - onTransferenciaFeita: A função de "refresh"
-function FormFazerTransferencia({ clienteId, contasCorrente, metas, onTransferenciaFeita }) {
+function FormFazerTransferencia({ onTransferenciaFeita }) {
+  const { utilizador } = useAuth();
+  const { contas } = useData();
 
-  // Estado interno do formulário
-  const [valor, setValor] = useState('');
-  const [dataOperacao, setDataOperacao] = useState('');
+  // Estados do formulário
   const [contaOrigemId, setContaOrigemId] = useState('');
-  const [contaDestinoId, setContaDestinoId] = useState(''); // O ID da conta/meta de destino
+  const [contaDestinoId, setContaDestinoId] = useState('');
+  const [valor, setValor] = useState('');
+  const [data, setData] = useState(new Date().toISOString().split('T')[0]);
 
-  // Função chamada ao submeter o formulário
+  // Filtra contas (só pode transferir de/para CONTA_CORRENTE)
+  const contasCorrente = contas.filter(
+    c => c.tipoConta === 'CONTA_CORRENTE'
+  );
+
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!valor || !dataOperacao || !contaOrigemId || !contaDestinoId) {
-      alert('Por favor, preencha todos os campos da transferência.');
+    if (contaOrigemId === contaDestinoId) {
+      alert('A conta de origem e destino não podem ser as mesmas.');
       return;
     }
 
-    // Monta o payload para enviar para a API de Transferências
     const payload = {
-      clienteId: clienteId,
-      contaOrigemId: contaOrigemId,
-      contaDestinoId: contaDestinoId,
-      valor: parseFloat(valor), // Valor é sempre positivo
-      dataOperacao: dataOperacao + ":00", // Adiciona segundos
+      clienteId: utilizador.id,
+      contaOrigemId: parseInt(contaOrigemId),
+      contaDestinoId: parseInt(contaDestinoId),
+      valor: parseFloat(valor),
+      dataTransferencia: new Date(data + 'T12:00:00').toISOString()
     };
 
-    console.log('A enviar transferência:', payload);
-
     try {
-      // Chama o endpoint POST /api/transferencias
-      await axios.post(`${API_BASE_URL}/transferencias`, payload);
-
+      // Este endpoint é um palpite (pode ser /transferir)
+      await axios.post(`${API_URL}/conta-para-conta`, payload);
       alert('Transferência realizada com sucesso!');
-
-      // Chama a função de "refresh" do Pai (Dashboard)
-      // para atualizar saldos, metas e transações!
-      onTransferenciaFeita(); 
-
+      onTransferenciaFeita(); // Chama a função de "refresh"
+      
       // Limpa o formulário
-      setValor('');
-      setDataOperacao('');
       setContaOrigemId('');
       setContaDestinoId('');
+      setValor('');
 
     } catch (error) {
-      console.error('Erro ao realizar transferência:', error.response.data);
-      // O backend vai dar "Saldo insuficiente" se for o caso
-      alert('Erro ao realizar transferência: ' + error.response.data);
+      console.error('Erro ao fazer transferência:', error.response?.data);
+      alert('Erro ao transferir: ' + (error.response?.data || 'Verifique os saldos.'));
     }
   };
 
-  // O HTML (JSX) do formulário
   return (
-    <form onSubmit={handleSubmit}>
-      <h4>Fazer Transferência (ou Guardar na Meta)</h4>
-
-      <div>
-        <label>Valor (R$): </label>
-        <input 
-          type="number"
-          step="0.01"
-          value={valor}
-          onChange={(e) => setValor(e.target.value)}
+    // O formulário em grid
+    <form onSubmit={handleSubmit} className="form-fazer-transferencia">
+      
+      <div className="form-group">
+        <label>De (Conta Origem)</label>
+        <select
+          className="form-control"
+          value={contaOrigemId}
+          onChange={(e) => setContaOrigemId(e.target.value)}
           required
-        />
-      </div>
-
-      <div>
-        <label>Data e Hora: </label>
-        <input 
-          type="datetime-local"
-          value={dataOperacao}
-          onChange={(e) => setDataOperacao(e.target.value)}
-          required
-        />
-      </div>
-
-      <div>
-        <label>De (Origem): </label>
-        <select value={contaOrigemId} onChange={(e) => setContaOrigemId(e.target.value)} required>
-          <option value="" disabled>Selecione uma conta de origem...</option>
-          {/* Loop nas contasCorrente (ex: Carteira) */}
+        >
+          <option value="">Selecione a conta de origem</option>
           {contasCorrente.map(conta => (
             <option key={conta.id} value={conta.id}>
-              {conta.nome} (Saldo: {conta.saldoAtual.toFixed(2)})
+              {conta.nome} (Saldo: R$ {conta.saldoAtual.toFixed(2)})
             </option>
           ))}
         </select>
       </div>
 
-      <div>
-        <label>Para (Destino): </label>
-        <select value={contaDestinoId} onChange={(e) => setContaDestinoId(e.target.value)} required>
-          <option value="" disabled>Selecione um destino...</option>
-
-          {/* Opções de Contas Corrente (exclui a origem) */}
-          {contasCorrente
-            .filter(conta => conta.id !== contaOrigemId) // Não transferir para si mesmo
-            .map(conta => (
+      <div className="form-group">
+        <label>Para (Conta Destino)</label>
+        <select
+          className="form-control"
+          value={contaDestinoId}
+          onChange={(e) => setContaDestinoId(e.target.value)}
+          required
+        >
+          <option value="">Selecione a conta de destino</option>
+          {contasCorrente.map(conta => (
             <option key={conta.id} value={conta.id}>
-              Conta: {conta.nome}
-            </option>
-          ))}
-
-          {/* Opções de Metas (Cofrinhos) */}
-          {metas.map(meta => (
-            // O VALOR é o ID da CONTA-COFRINHO associada!
-            <option key={meta.id} value={meta.contaAssociadaId}>
-              Meta: {meta.nome} (Guardado: {meta.valorAtual.toFixed(2)})
+              {conta.nome}
             </option>
           ))}
         </select>
       </div>
 
-      <button type="submit">Transferir</button>
+      <div className="form-group">
+        <label>Valor (R$)</label>
+        <input
+          type="number"
+          step="0.01"
+          min="0.01"
+          className="form-control"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          placeholder="0.00"
+          required
+        />
+      </div>
+
+      <div className="form-group">
+        <label>Data</label>
+        <input
+          type="date"
+          className="form-control"
+          value={data}
+          onChange={(e) => setData(e.target.value)}
+          required
+        />
+      </div>
+
+      {/* Ocupa as duas colunas */}
+      <div className="form-group form-group-full form-group-submit">
+        <button type="submit" className="btn btn-primary w-100">
+          Confirmar Transferência
+        </button>
+      </div>
     </form>
   );
 }
-
 export default FormFazerTransferencia;

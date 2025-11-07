@@ -1,87 +1,76 @@
-// src/components/FormGuardarNaMeta.jsx
-
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_URL = 'http://localhost:8080/api/transferencias';
 
-// Este componente recebe muitas props!
-function FormGuardarNaMeta({ clienteId, contasCorrente, metaDestino, onTransferenciaFeita }) {
-
+function FormGuardarNaMeta({ meta, contasCorrente, clienteId, onTransferenciaFeita }) {
   const [valor, setValor] = useState('');
-  const [contaOrigemId, setContaOrigemId] = useState('');
-  const [dataOperacao, setDataOperacao] = useState('');
+  // Define a primeira conta como padrão, se existir
+  const [contaId, setContaId] = useState(contasCorrente[0]?.id || '');
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-
-    if (!valor || !contaOrigemId || !dataOperacao) {
-      alert('Por favor, preencha todos os campos para guardar.');
+    
+    if (contasCorrente.length === 0) {
+      alert('Você precisa ter uma conta corrente para guardar dinheiro.');
       return;
     }
 
-    // O destino já está definido (é a 'metaDestino' que recebemos)
     const payload = {
-      clienteId: clienteId,
-      contaOrigemId: contaOrigemId,
-      contaDestinoId: metaDestino.contaAssociadaId, // O ID da conta-cofrinho!
-      valor: parseFloat(valor),
-      dataOperacao: dataOperacao + ":00",
+      clienteId,
+      contaOrigemId: contaId,
+      metaDestinoId: meta.id,
+      valor: parseFloat(valor)
     };
 
-    console.log('A guardar na meta:', payload);
-
     try {
-      await axios.post(`${API_BASE_URL}/transferencias`, payload);
-      alert('Dinheiro guardado com sucesso!');
-
-      // Chama a função "master refresh" do DataContext
-      onTransferenciaFeita(); 
-
-      setValor('');
-      setContaOrigemId('');
-      setDataOperacao('');
+      await axios.post(`${API_URL}/guardar`, payload);
+      alert('Valor guardado com sucesso!');
+      onTransferenciaFeita();
     } catch (error) {
-      console.error('Erro ao guardar na meta:', error.response.data);
-      alert('Erro: ' + error.response.data);
+      console.error('Erro ao guardar valor:', error);
+      alert('Erro ao guardar: ' + (error.response?.data || 'Verifique seu saldo.'));
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ padding: '10px', border: '1px dashed gray', marginTop: '5px' }}>
-      <strong>Guardar Dinheiro para "{metaDestino.nome}"</strong>
-
-      <div>
-        <label>Valor (R$): </label>
-        <input 
-          type="number" step="0.01" value={valor}
-          onChange={(e) => setValor(e.target.value)} required
+    <form onSubmit={handleSubmit}>
+      <div className="form-group">
+        <label>Valor a Guardar (R$)</label>
+        <input
+          type="number"
+          step="0.01"
+          min="0.01"
+          className="form-control"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          placeholder="50.00"
+          required
         />
       </div>
-
-      <div>
-        <label>Data: </label>
-        <input 
-          type="datetime-local" value={dataOperacao}
-          onChange={(e) => setDataOperacao(e.target.value)} required
-        />
-      </div>
-
-      <div>
-        <label>De (Origem): </label>
-        <select value={contaOrigemId} onChange={(e) => setContaOrigemId(e.target.value)} required>
-          <option value="" disabled>Selecione uma conta...</option>
-          {contasCorrente.map(conta => (
-            <option key={conta.id} value={conta.id}>
-              {conta.nome} (Saldo: {conta.saldoAtual.toFixed(2)})
-            </option>
-          ))}
+      <div className="form-group">
+        <label>Tirar da Conta:</label>
+        <select
+          className="form-control"
+          value={contaId}
+          onChange={(e) => setContaId(e.target.value)}
+          required
+        >
+          {contasCorrente.length > 0 ? (
+            contasCorrente.map(conta => (
+              <option key={conta.id} value={conta.id}>
+                {conta.nome} (Saldo: R$ {conta.saldoAtual.toFixed(2)})
+              </option>
+            ))
+          ) : (
+            <option disabled>Nenhuma conta corrente encontrada</option>
+          )}
         </select>
       </div>
-
-      <button type="submit">Guardar</button>
+      <button type="submit" className="btn btn-success w-100">
+        Confirmar Depósito
+      </button>
     </form>
   );
 }
-
 export default FormGuardarNaMeta;

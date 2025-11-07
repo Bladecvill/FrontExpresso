@@ -1,39 +1,25 @@
 // src/App.jsx
-
-import React, { useState } from 'react';
 // 1. Imports do React Router
-import { Routes, Route, Navigate } from 'react-router-dom'; 
-import { useAuth } from './context/AuthContext';
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
 
 // --- Layout ---
-import MainLayout from './components/MainLayout'; // A "casca" da app logada
+import MainLayout from "./components/MainLayout"; // A "casca" da app logada
 
 // --- Páginas Logadas (as 6 "abas") ---
-import HomePage from './pages/HomePage';
-import ContasPage from './pages/ContasPage';
-import TransacoesPage from './pages/TransacoesPage';
-import MetasPage from './pages/MetasPage';
-import TransferenciasPage from './pages/TransferenciasPage';
-import PerfilPage from './pages/PerfilPage';
+import HomePage from "./pages/HomePage";
+import ContasPage from "./pages/ContasPage";
+import TransacoesPage from "./pages/TransacoesPage";
+import MetasPage from "./pages/MetasPage";
+import TransferenciasPage from "./pages/TransferenciasPage";
+import PerfilPage from "./pages/PerfilPage";
 
 // --- Páginas Deslogadas ---
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
 
 // --- Componente da Área de Autenticação (Login/Cadastro) ---
 // (O que tínhamos antes, mas agora mais simples)
-function AuthArea() {
-  const [mostrarLogin] = useState(true);
-
-  return (
-    <div className='MainCatg'>
-      <nav>
-      {mostrarLogin ? <LoginPage /> : <RegisterPage />}
-      </nav>
-    </div>
-  );
-}
-
 // --- Componente de "Rota Privada" ---
 // Isto protege as nossas páginas. Se o utilizador não estiver logado,
 // ele é "redirecionado" (Navigate) para a página de login.
@@ -47,16 +33,24 @@ function PrivateRoute({ children }) {
 
 // --- O NOVO App.jsx ---
 // Agora ele é apenas o "mapa" (Router) do site
+// src/App.jsx
+
+// ... (mantenha todos os seus imports)
+// ... (mantenha o componente PrivateRoute)
+
+// --- O NOVO App.jsx ---
+// Agora ele é apenas o "mapa" (Router) do site
 function App() {
   const { utilizador } = useAuth(); // Usado para a rota de login
+
+  // (Não precisamos mais do AuthArea ou do useState(mostrarLogin) aqui)
 
   return (
     // O <Routes> é o "cérebro" do Router
     <Routes>
-
       {/* --- ROTAS PRIVADAS (Área Logada) --- */}
-      <Route 
-        path="/" 
+      <Route
+        path="/"
         element={
           <PrivateRoute>
             <MainLayout />
@@ -68,25 +62,38 @@ function App() {
         */}
         <Route index element={<HomePage />} /> {/* URL: / */}
         <Route path="contas" element={<ContasPage />} /> {/* URL: /contas */}
-        <Route path="transacoes" element={<TransacoesPage />} /> {/* URL: /transacoes */}
+        <Route path="transacoes" element={<TransacoesPage />} />{" "}
+        {/* URL: /transacoes */}
         <Route path="metas" element={<MetasPage />} /> {/* URL: /metas */}
-        <Route path="transferencias" element={<TransferenciasPage />} /> {/* URL: /transferencias */}
+        <Route path="transferencias" element={<TransferenciasPage />} />{" "}
+        {/* URL: /transferencias */}
         <Route path="perfil" element={<PerfilPage />} /> {/* URL: /perfil */}
       </Route>
 
       {/* --- ROTAS PÚBLICAS (Área Deslogada) --- */}
-      <Route 
-        path="/login" 
+      
+      {/* MUDANÇA 1: A rota /login agora renderiza SÓ o LoginPage */}
+      <Route
+        path="/login"
         element={
           // Se o utilizador já está logado, redireciona para a Home ("/")
-          // Se não, mostra a área de Login/Cadastro
-          utilizador ? <Navigate to="/" /> : <AuthArea />
-        } 
+          // Se não, mostra a página de Login
+          utilizador ? <Navigate to="/" /> : <LoginPage />
+        }
+      />
+
+      {/* MUDANÇA 2: ADICIONAMOS A ROTA PARA /RegisterPage */}
+      <Route
+        path="/RegisterPage"
+        element={
+          // Se o utilizador já está logado, redireciona para a Home ("/")
+          // Se não, mostra a página de Registro
+          utilizador ? <Navigate to="/" /> : <RegisterPage />
+        }
       />
 
       {/* Rota "Pega-Tudo" (404 Not Found) */}
       <Route path="*" element={<Navigate to="/" />} />
-
     </Routes>
   );
 }

@@ -4,9 +4,9 @@ import React, { useState, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import FormCriarTransacao from '../components/FormCriarTransacao';
-import axios from 'axios'; // 1. IMPORTAR AXIOS
+import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080/api'; // 2. ADICIONAR BASE URL
+const API_BASE_URL = 'http://localhost:8080/api';
 
 // Função de AJUDA para formatar a data (sem mudança)
 function formatarData(dataISO) {
@@ -29,9 +29,12 @@ function TransacoesPage() {
     refreshDadosTransacao
   } = useData();
   const { utilizador } = useAuth();
+  
+  // --- ESTADOS DA PÁGINA (ADICIONADOS) ---
   const [mostrarTodas, setMostrarTodas] = useState(false);
+  const [mostrarForm, setMostrarForm] = useState(false);
 
-  // ... (lógica de ordenação e visibilidade - sem mudança) ...
+  // Lógica de ordenação e visibilidade (sem mudança)
   const transacoesOrdenadas = useMemo(() => {
     return [...transacoes]
       .sort((a, b) => new Date(b.dataOperacao) - new Date(a.dataOperacao)); 
@@ -41,124 +44,124 @@ function TransacoesPage() {
     if (mostrarTodas) {
       return transacoesOrdenadas;
     }
-    return transacoesOrdenadas.slice(0, 5);
-  }, [mostrarTodas, transacoesOrdenadas]);
+    return transacoesOrdenadas.slice(0, 10); // Mostra as 10 últimas
+  }, [transacoesOrdenadas, mostrarTodas]);
 
-
-  // 3. ADICIONAR A NOVA FUNÇÃO DE DELETAR
+  // Lógica para Deletar (sem mudança)
   const handleDeletar = async (transacaoId) => {
-    // 3.1. Confirmação
-    if (!window.confirm("Tem certeza que deseja deletar esta transação? O saldo da conta será revertido. Esta ação é irreversível.")) {
+    if (!window.confirm('Tem certeza que deseja deletar esta transação?')) {
       return;
     }
-
     try {
-      // 3.2. Chama a API
-      await axios.delete(`${API_BASE_URL}/transacoes/${transacaoId}`);
+      await axios.delete(`${API_BASE_URL}/transacoes/${transacaoId}`, {
+        data: { clienteId: utilizador.id }
+      });
       alert('Transação deletada com sucesso!');
-      
-      // 3.3. Chama o refresh global (para atualizar saldos e a lista)
-      refreshDadosTransacao(); 
-      
+      refreshDadosTransacao(); // Atualiza tudo (transações, contas, metas)
     } catch (error) {
-    // 3.4. Mostra o erro (CORRIGIDO)
-
-    // Tenta ler a mensagem de erro (seja um objeto ou uma string)
-    const mensagemErro = error.response?.data?.message || error.response?.data || "Ocorreu um erro desconhecido";
-
-    console.error('Erro ao deletar transação:', mensagemErro);
-    alert('Erro ao deletar: ' + mensagemErro);
+      console.error('Erro ao deletar transação:', error);
+      alert('Erro ao deletar: ' + (error.response?.data || 'Erro desconhecido.'));
     }
-  }
+  };
 
+  // Mapas para consulta rápida (nome da categoria e conta)
+  const mapCategorias = useMemo(() => 
+    new Map(categorias.map(c => [c.id, c.nome])), 
+  [categorias]);
+  
+  const mapContas = useMemo(() => 
+    new Map(contas.map(c => [c.id, c.nome])), 
+  [contas]);
 
   if (loading) {
     return <div>A carregar dados...</div>;
   }
 
+  // --- O NOVO JSX ESTILIZADO ---
   return (
-    <div>
-      <h2>Gestão de Transações</h2>
-      
-      {/* ... (Formulário - sem mudança) ... */}
-      <FormCriarTransacao 
-        clienteId={utilizador.id}
-        contas={contas}
-        categorias={categorias}
-        onTransacaoCriada={refreshDadosTransacao}
-      />
-      <hr />
+    <>
+      {/* 1. Cabeçalho da Página */}
+      <div className="page-header">
+        <h2>Histórico de Transações</h2>
+        <button
+          onClick={() => setMostrarForm(!mostrarForm)}
+          className={`btn ${mostrarForm ? 'btn-secondary' : 'btn-primary'}`}
+        >
+          {mostrarForm ? 'Fechar Formulário' : 'Adicionar Transação'}
+        </button>
+      </div>
 
-      {/* Lista de Transações (AGORA COMPLETA) */}
-      <h3>Últimas Transações</h3>
-      <ul style={{ listStyleType: 'none', padding: 0 }}>
+      {/* 2. Formulário de "Criar Transação" (que abre e fecha) */}
+      {mostrarForm && (
+        <div className="card"> {/* O formulário já tem padding interno */}
+          <FormCriarTransacao
+            onTransacaoCriada={() => {
+              refreshDadosTransacao();
+              setMostrarForm(false);
+            }}
+          />
+        </div>
+      )}
+
+      {/* 3. A Lista de Transações (Refatorada) */}
+      <ul className="transacoes-list">
         {visibleTransacoes.length > 0 ? (
-          visibleTransacoes.map(transacao => (
-            <li 
-              key={transacao.id} 
-              style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '10px',
-                borderBottom: '1px solid #eee',
-                paddingBottom: '10px'
-              }}
-            >
-              {/* Div da Esquerda (Informações) - CORRIGIDO */}
-              <div>
-                <strong style={{ fontSize: '1.1em' }}>
-                  {transacao.nomeCategoria}
-                </strong>
-                {transacao.descricao && (
-                  <>
-                    <br />
-                    <span>Descrição: {transacao.descricao}</span>
-                  </>
-                )}
-                <br />
-                {transacao.valor > 0 ? (
-                  <span style={{ color: 'green' }}>
-                    Tipo: Receita | Valor: R$ {transacao.valor.toFixed(2)}
-                  </span>
-                ) : (
-                  <span style={{ color: 'red' }}>
-                    Tipo: Despesa | Valor: R$ {transacao.valor.toFixed(2)}
-                  </span>
-                )}
-                <br />
-                <span>(Conta: {transacao.nomeConta})</span>
-                
-                {/* 4. O NOVO BOTÃO DELETAR */}
-                <br />
-                <button 
-                  onClick={() => handleDeletar(transacao.id)}
-                  style={{ color: 'red', fontSize: '0.8em', padding: '2px 5px', marginTop: '5px' }}
-                >
-                  Deletar
-                </button>
-              </div>
+          visibleTransacoes.map(transacao => {
+            const isReceita = transacao.tipo === 'RECEITA';
+            const nomeCategoria = mapCategorias.get(transacao.categoriaId) || 'Sem Categoria';
+            const nomeConta = mapContas.get(transacao.contaId) || 'Conta Deletada';
 
-              {/* Div da Direita (Data e Hora) - CORRIGIDO */}
-              <div style={{ textAlign: 'right', minWidth: '120px' }}>
-                <span style={{ fontSize: '0.9em', color: '#555' }}>
-                  {formatarData(transacao.dataOperacao)}
-                </span>
-              </div>
-            </li>
-          ))
+            return (
+              <li key={transacao.id} className="transacao-item">
+                
+                {/* Ícone (Esquerda) */}
+                <div className={`transacao-icon ${isReceita ? 'receita' : 'despesa'}`}>
+                  {isReceita ? 'R' : 'D'}
+                </div>
+
+                {/* Detalhes (Meio) */}
+                <div className="transacao-detalhes">
+                  <strong>{transacao.descricao}</strong>
+                  <p>{nomeCategoria} | {nomeConta}</p>
+                </div>
+
+                {/* Valor e Data (Direita) */}
+                <div className="transacao-info">
+                  <div className={`transacao-valor ${isReceita ? 'receita' : 'despesa'}`}>
+                    {isReceita ? '+' : '-'} R$ {transacao.valor.toFixed(2)}
+                  </div>
+                  <div className="transacao-data">
+                    {formatarData(transacao.dataOperacao)}
+                  </div>
+                </div>
+
+                {/* Botão Deletar (Extrema Direita) */}
+                <button
+                  onClick={() => handleDeletar(transacao.id)}
+                  className="btn-deletar-transacao"
+                  title="Deletar transação"
+                >
+                  &times; {/* Um "X" para deletar */}
+                </button>
+              </li>
+            );
+          })
         ) : (
-          <p>Nenhuma transação encontrada.</p>
+          <li className="empty-state" style={{ padding: '2rem' }}>
+            Nenhuma transação encontrada.
+          </li>
         )}
       </ul>
 
-      {/* ... (Botão "Mostrar Todas" - sem mudança) ... */}
-      {transacoesOrdenadas.length > 5 && (
-        <button onClick={() => setMostrarTodas(!mostrarTodas)}>
-          {mostrarTodas ? 'Mostrar menos' : `Mostrar todas (${transacoesOrdenadas.length})`}
-        </button>
+      {/* Botão "Mostrar Todas" */}
+      {transacoesOrdenadas.length > 10 && (
+        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+          <button onClick={() => setMostrarTodas(!mostrarTodas)} className="btn btn-secondary">
+            {mostrarTodas ? 'Mostrar menos' : `Mostrar todas (${transacoesOrdenadas.length})`}
+          </button>
+        </div>
       )}
-    </div>
+    </>
   );
 }
 

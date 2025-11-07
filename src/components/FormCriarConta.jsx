@@ -7,40 +7,30 @@ const API_BASE_URL = 'http://localhost:8080/api';
 
 // Recebe o clienteId e a função de refresh
 function FormCriarConta({ clienteId, onContaCriada }) {
-
   const [nome, setNome] = useState('');
   const [saldoAbertura, setSaldoAbertura] = useState('');
+  // Adicionamos tipo de conta para o formulário
+  const [tipoConta, setTipoConta] = useState('CONTA_CORRENTE'); 
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-
-    if (!nome || saldoAbertura === '') {
-      alert('Por favor, preencha todos os campos.');
-      return;
-    }
-
-    // O backend espera que 'saldoAtual' seja igual a 'saldoAbertura'
+    
     const payload = {
       clienteId: clienteId,
       nome: nome,
       saldoAbertura: parseFloat(saldoAbertura),
-      tipoConta: 'CONTA_CORRENTE' // O backend espera isto
+      tipoConta: tipoConta 
     };
 
-    console.log('A enviar nova conta:', payload);
-
     try {
-      // Chama o endpoint POST /api/contas
       await axios.post(`${API_BASE_URL}/contas`, payload);
-
       alert('Conta criada com sucesso!');
-
-      // Chama a função de "refresh" do Pai (DataContext)
-      onContaCriada(); 
-
+      onContaCriada(); // Chama a função de "refresh"
+      
       // Limpa o formulário
       setNome('');
       setSaldoAbertura('');
+      setTipoConta('CONTA_CORRENTE');
 
     } catch (error) {
       console.error('Erro ao criar conta:', error.response.data);
@@ -49,31 +39,53 @@ function FormCriarConta({ clienteId, onContaCriada }) {
   };
 
   return (
+    // Aplicamos as classes de formulário (form-group, form-control, btn)
     <form onSubmit={handleSubmit}>
-      <h4>Adicionar Nova Conta Corrente</h4>
+      <h4>Adicionar Nova Conta</h4>
 
-      <div>
-        <label>Nome da Conta (ex: Nubank, Bradesco): </label>
-        <input 
+      <div className="form-group">
+        <label>Nome da Conta (ex: Nubank, Bradesco)</label>
+        <input
           type="text"
+          className="form-control"
           value={nome}
           onChange={(e) => setNome(e.target.value)}
+          placeholder="Minha Conta Principal"
           required
         />
       </div>
 
-      <div>
-        <label>Saldo de Abertura (R$): </label>
-        <input 
+      <div className="form-group">
+        <label>Tipo de Conta</label>
+        <select 
+          className="form-control"
+          value={tipoConta}
+          onChange={(e) => setTipoConta(e.target.value)}
+          required
+        >
+          <option value="CONTA_CORRENTE">Conta Corrente</option>
+          <option value="POUPANCA">Poupança</option>
+          <option value="CARTEIRA">Carteira (Dinheiro Físico)</option>
+          <option value="INVESTIMENTO">Investimento</option>
+        </select>
+      </div>
+
+      <div className="form-group">
+        <label>Saldo de Abertura (R$)</label>
+        <input
           type="number"
           step="0.01"
+          className="form-control"
           value={saldoAbertura}
           onChange={(e) => setSaldoAbertura(e.target.value)}
+          placeholder="0.00"
           required
         />
       </div>
 
-      <button type="submit">Criar Conta</button>
+      <button type="submit" className="btn btn-primary w-100">
+        Salvar Conta
+      </button>
     </form>
   );
 }

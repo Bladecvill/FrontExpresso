@@ -1,6 +1,6 @@
 // src/pages/LoginPage.jsx
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom'; // Importar o Link
@@ -25,6 +25,7 @@ function LoginPage() {
       alert('Erro no login: ' + error.response.data); 
     }
   };
+
 
   // O HTML (JSX) agora com classes CSS
   return (
@@ -70,9 +71,8 @@ function LoginPage() {
           </form>
 
           <div className="text-center mt-3">
-            Não possui conta ainda? <Link to="/RegisterPage">Registre-se</Link>
+            Não possui conta ainda? <Link to="/RegisterPage">Faça seu Cadastro</Link>
           </div>
-
         </div>
       </div>
     </div>

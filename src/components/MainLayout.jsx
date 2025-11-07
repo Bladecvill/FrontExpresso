@@ -1,44 +1,68 @@
 // src/components/MainLayout.jsx
 
-import React from 'react'; // Removido 'useMemo' e 'useData'
-import { Outlet, Link } from 'react-router-dom';
+import React from 'react';
+// 1. IMPORTAR NavLink para o estilo de link "ativo"
+import { Outlet, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-// 1. IMPORTAR O NOSSO NOVO CONTAINER
-import CardsResumoContainer from './CardsResumoContainer';
+import CardsResumoContainer from './CardsResumoContainer'; //
 
-// --- O Layout Principal (AGORA MAIS LIMPO) ---
 function MainLayout() {
-  const { utilizador, logout } = useAuth(); // Para o "Olá" e o "Sair"
+  const { utilizador, logout } = useAuth(); //
 
   return (
-    <div>
-      <header>
-        <h2>Olá, {utilizador.nome}!</h2>
-        <button onClick={logout}>Sair (Logout)</button>
-        <hr />
+    <div className="app-layout">
+      
+      {/* 1. SIDEBAR (Menu de Navegação) */}
+      <nav className="app-sidebar">
+        <div className="sidebar-header">
+          <h2>Expresso Finance</h2>
+        </div>
 
-        {/* A Barra de Navegação (as "Abas") (sem mudança) */}
-        <nav>
-          <Link to="/"><button>Dashboard</button></Link>
-          <Link to="/contas"><button>Minhas Contas</button></Link>
-          <Link to="/transacoes"><button>Transações</button></Link>
-          <Link to="/metas"><button>Metas</button></Link>
-          <Link to="/transferencias"><button>Transferências</button></Link>
-          <Link to="/perfil"><button>Perfil</button></Link>
-        </nav>
+        <div className="sidebar-nav">
+          {/* Usamos NavLink em vez de Link para a classe "active" */}
+          <NavLink to="/" className="nav-link" end>
+            Dashboard
+          </NavLink>
+          <NavLink to="/contas" className="nav-link">
+            Minhas Contas
+          </NavLink>
+          <NavLink to="/transacoes" className="nav-link">
+            Transações
+          </NavLink>
+          <NavLink to="/metas" className="nav-link">
+            Metas
+          </NavLink>
+          <NavLink to="/transferencias" className="nav-link">
+            Transferências
+          </NavLink>
+          <NavLink to="/perfil" className="nav-link">
+            Perfil
+          </NavLink>
+        </div>
+        
+        <div className="sidebar-footer">
+          <button onClick={logout} className="btn btn-logout">
+            Sair (Logout)
+          </button>
+        </div>
+      </nav>
 
-        <hr />
+      {/* 2. ÁREA DE CONTEÚDO (Header + Página) */}
+      <div className="app-content-wrapper">
+        
+        {/* 2a. Header (Saudação + Cards) */}
+        <header className="app-header">
+          <h2>Olá, {utilizador.nome}!</h2>
+          {/* O container de cards agora fica aqui dentro */}
+          <CardsResumoContainer /> 
+        </header>
 
-        {/* 2. RENDERIZAR O NOVO CONTAINER DE CARDS */}
-        {/* O SaldoTotalCard foi removido e substituído por isto */}
-        <CardsResumoContainer />
-
-      </header>
-
-      <main>
-        {/* <Outlet> (sem mudança) */}
-        <Outlet />
-      </main>
+        {/* 2b. Conteúdo da Página (renderizado pelo <Outlet>) */}
+        <main className="app-content">
+          <Outlet /> {/* HomePage, ContasPage, etc. aparecem aqui */}
+        </main>
+        
+      </div>
     </div>
   );
 }

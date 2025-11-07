@@ -1,100 +1,64 @@
-// src/components/FormCriarMeta.jsx
-
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+const API_URL = 'http://localhost:8080/api/metas';
 
-// Este componente recebe props do Dashboard:
-// clienteId: para saber quem é o dono da meta
-// onMetaCriada: a função de "refresh" do Dashboard
 function FormCriarMeta({ clienteId, onMetaCriada }) {
-
-  // Estado interno do formulário
   const [nome, setNome] = useState('');
   const [valorAlvo, setValorAlvo] = useState('');
-  const [dataAlvo, setDataAlvo] = useState('');
 
-  // Função chamada ao submeter o formulário
   const handleSubmit = async (event) => {
     event.preventDefault();
-
-    if (!nome || !valorAlvo || !dataAlvo) {
-      alert('Por favor, preencha todos os campos.');
-      return;
-    }
-
-    // Monta o payload para enviar para a API de Metas
-    // (Lembre-se que o backend vai criar a Conta-Cofrinho automaticamente!)
     const payload = {
-      clienteId: clienteId,
-      nome: nome,
-      valorAlvo: parseFloat(valorAlvo), // Converte para número
-      dataAlvo: dataAlvo,
+      clienteId,
+      nome,
+      valorAlvo: parseFloat(valorAlvo),
+      valorAtual: 0, // Meta começa com 0
+      tipoMeta: 'ECONOMIA' // Tipo padrão
     };
-
-    console.log('A enviar nova meta:', payload);
-
     try {
-      // Chama o endpoint POST /api/metas
-      await axios.post(`${API_BASE_URL}/metas`, payload);
-
+      await axios.post(API_URL, payload);
       alert('Meta criada com sucesso!');
-
-      // Chama a função de "refresh" do Pai (Dashboard)
-      // para que a nova meta apareça na lista
-      onMetaCriada(); 
-
-      // Limpa o formulário
+      onMetaCriada();
       setNome('');
       setValorAlvo('');
-      setDataAlvo('');
-
     } catch (error) {
-      console.error('Erro ao criar meta:', error.response.data);
-      alert('Erro ao criar meta: ' + error.response.data);
+      console.error('Erro ao criar meta:', error);
+      alert('Erro ao criar meta.');
     }
   };
 
-  // O HTML (JSX) do formulário
   return (
     <form onSubmit={handleSubmit}>
       <h4>Criar Nova Meta (Cofrinho)</h4>
-
-      <div>
-        <label>Nome da Meta: </label>
-        <input 
+      <div className="form-group">
+        <label>Nome da Meta (ex: Viagem, Carro Novo)</label>
+        <input
           type="text"
+          className="form-control"
           value={nome}
           onChange={(e) => setNome(e.target.value)}
+          placeholder="Minha viagem para a praia..."
           required
         />
       </div>
-
-      <div>
-        <label>Valor Alvo (R$): </label>
-        <input 
+      <div className="form-group">
+        <label>Valor Alvo (R$)</label>
+        <input
           type="number"
           step="0.01"
+          min="1"
+          className="form-control"
           value={valorAlvo}
           onChange={(e) => setValorAlvo(e.target.value)}
+          placeholder="1000.00"
           required
         />
       </div>
-
-      <div>
-        <label>Data Alvo: </label>
-        <input 
-          type="date" // Apenas Data (o backend aceita LocalDate)
-          value={dataAlvo}
-          onChange={(e) => setDataAlvo(e.target.value)}
-          required
-        />
-      </div>
-
-      <button type="submit">Criar Meta</button>
+      <button type="submit" className="btn btn-primary w-100">
+        Salvar Meta
+      </button>
     </form>
   );
 }
-
 export default FormCriarMeta;

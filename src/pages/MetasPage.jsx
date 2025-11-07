@@ -5,100 +5,106 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import FormCriarMeta from '../components/FormCriarMeta';
 import FormGuardarNaMeta from '../components/FormGuardarNaMeta';
-import FormSacarDaMeta from '../components/FormSacarDaMeta'; // 1. IMPORTAR O NOVO FORMULÁRIO
+import FormSacarDaMeta from '../components/FormSacarDaMeta';
 import ProgressBar from '../components/ProgressBar';
 
-// Componente "Item da Meta" - ATUALIZADO
+// --- COMPONENTE INTERNO: O CARD DA META ---
 function MetaItem({ meta, contasCorrente, clienteId, onTransferenciaFeita }) {
-
-  // 2. LÓGICA DE ESTADO ATUALIZADA
-  // 'nenhum', 'guardar', 'sacar'
-  const [formAberto, setFormAberto] = useState('nenhum');
-
-  // Calcula o percentual
+  const [formAberto, setFormAberto] = useState('nenhum'); // 'nenhum', 'guardar', 'sacar'
   const percentual = (meta.valorAtual / meta.valorAlvo) * 100;
 
   // Funções para alternar os formulários
   const toggleGuardar = () => {
     setFormAberto(formAberto === 'guardar' ? 'nenhum' : 'guardar');
   };
-
   const toggleSacar = () => {
     setFormAberto(formAberto === 'sacar' ? 'nenhum' : 'sacar');
   };
 
+  // Função para fechar o formulário após a ação
+  const handleTransferencia = () => {
+    onTransferenciaFeita(); // Atualiza os dados (via DataContext)
+    setFormAberto('nenhum'); // Fecha o formulário
+  };
+
   return (
-    <li style={{ border: '1px solid #ccc', padding: '10px', marginBottom: '15px' }}>
-      {/* 1. Detalhes da Meta (sem mudança) */}
-      <h3>{meta.nome}</h3>
-      <p>
-        Guardado: R$ {meta.valorAtual.toFixed(2)} / 
-        Alvo: R$ {meta.valorAlvo.toFixed(2)}
-      </p>
-      <p>Data Alvo: {meta.dataAlvo}</p>
+    // 1. O card da meta
+    <li className="meta-item-card">
+      
+      {/* 2. Cabeçalho do card */}
+      <div className="meta-item-header">
+        <h3>{meta.nome}</h3>
+        {/* Aqui poderiam ir botões de editar/excluir */}
+      </div>
 
-      {/* 2. Barra de Progresso (sem mudança) */}
-      <ProgressBar percentual={percentual} />
+      {/* 3. Progresso */}
+      <div>
+        <ProgressBar percentual={percentual} />
+        <div className="meta-item-progress-text">
+          <span>Guardado: <strong>R$ {meta.valorAtual.toFixed(2)}</strong></span>
+          <span>Objetivo: R$ {meta.valorAlvo.toFixed(2)}</span>
+        </div>
+      </div>
 
-      {/* 3. BOTÕES DE AÇÃO ATUALIZADOS */}
-      <button onClick={toggleGuardar} disabled={formAberto === 'sacar'}>
-        {formAberto === 'guardar' ? 'Cancelar' : 'Adicionar Dinheiro'}
-      </button>
+      {/* 4. Botões de Ação */}
+      <div className="meta-item-buttons">
+        <button
+          onClick={toggleGuardar}
+          // Muda o estilo do botão se o form estiver aberto
+          className={`btn ${formAberto === 'guardar' ? 'btn-secondary' : 'btn-success'} w-100`}
+        >
+          {formAberto === 'guardar' ? 'Fechar' : 'Guardar'}
+        </button>
+        <button
+          onClick={toggleSacar}
+          className={`btn ${formAberto === 'sacar' ? 'btn-secondary' : 'btn-danger'} w-100`}
+        >
+          {formAberto === 'sacar' ? 'Fechar' : 'Sacar'}
+        </button>
+      </div>
 
-      <button onClick={toggleSacar} disabled={formAberto === 'guardar'}>
-        {formAberto === 'sacar' ? 'Cancelar Saque' : 'Sacar Valor'}
-      </button>
-      {/* TODO: Adicionar botões de Editar/Deletar */}
-
-      {/* 4. FORMULÁRIOS CONDICIONAIS */}
-
-      {/* Formulário de "Guardar Dinheiro" */}
+      {/* 5. Formulários Internos (Guardar) */}
       {formAberto === 'guardar' && (
-        <FormGuardarNaMeta 
-          clienteId={clienteId}
-          contasCorrente={contasCorrente}
-          metaDestino={meta}
-          onTransferenciaFeita={() => {
-            onTransferenciaFeita();
-            setFormAberto('nenhum'); // Fecha o form após sucesso
-          }}
-        />
+        <div className="meta-item-form">
+          <h4>Guardar na Meta</h4>
+          <FormGuardarNaMeta
+            meta={meta}
+            contasCorrente={contasCorrente}
+            clienteId={clienteId}
+            onTransferenciaFeita={handleTransferencia}
+          />
+        </div>
       )}
 
-      {/* NOVO: Formulário de "Sacar Dinheiro" */}
+      {/* 5. Formulários Internos (Sacar) */}
       {formAberto === 'sacar' && (
-        <FormSacarDaMeta
-          clienteId={clienteId}
-          contasCorrente={contasCorrente}
-          metaOrigem={meta} // A meta é a ORIGEM
-          onTransferenciaFeita={() => {
-            onTransferenciaFeita();
-            setFormAberto('nenhum'); // Fecha o form após sucesso
-          }}
-        />
+        <div className="meta-item-form">
+          <h4>Sacar da Meta</h4>
+          <FormSacarDaMeta
+            meta={meta}
+            contasCorrente={contasCorrente}
+            clienteId={clienteId}
+            onTransferenciaFeita={handleTransferencia}
+          />
+        </div>
       )}
     </li>
   );
 }
 
 
-// --- A Página Principal de Metas (sem mudanças, exceto pelo import) ---
+// --- COMPONENTE PRINCIPAL: A PÁGINA ---
 function MetasPage() {
-  const { 
-    contas, 
-    metas, 
-    loading, 
-    refreshMetas, 
-    refreshAposTransferencia 
-  } = useData();
   const { utilizador } = useAuth();
+  const { contas, metas, loading, refreshMetas, refreshContas } = useData();
   const [mostrarFormCriar, setMostrarFormCriar] = useState(false);
 
+  // Ordena as metas (sem mudança na lógica)
   const metasOrdenadas = useMemo(() => {
     return [...metas].sort((a, b) => {
       const percentualA = (a.valorAtual / a.valorAlvo) * 100;
       const percentualB = (b.valorAtual / b.valorAlvo) * 100;
-      return percentualB - percentualA; 
+      return percentualB - percentualA;
     });
   }, [metas]);
 
@@ -107,46 +113,51 @@ function MetasPage() {
   }
 
   return (
-    <div>
-      <h2>Gestão de Metas (Cofrinhos)</h2>
+    <>
+      {/* 1. Cabeçalho da Página */}
+      <div className="page-header">
+        <h2>Gestão de Metas (Cofrinhos)</h2>
+        <button
+          onClick={() => setMostrarFormCriar(!mostrarFormCriar)}
+          className={`btn ${mostrarFormCriar ? 'btn-secondary' : 'btn-primary'}`}
+        >
+          {mostrarFormCriar ? 'Fechar Formulário' : 'Incluir Nova Meta'}
+        </button>
+      </div>
 
-      {/* Botão "Incluir nova meta" (sem mudança) */}
-      <button onClick={() => setMostrarFormCriar(!mostrarFormCriar)}>
-        {mostrarFormCriar ? 'Fechar Formulário' : 'Incluir Nova Meta'}
-      </button>
-
-      {/* Formulário "Criar Meta" (sem mudança) */}
+      {/* 2. Formulário de "Criar Meta" (que abre e fecha) */}
       {mostrarFormCriar && (
-        <FormCriarMeta 
-          clienteId={utilizador.id}
-          onMetaCriada={() => {
-            refreshMetas();
-            setMostrarFormCriar(false);
-          }}
-        />
+        <div className="card form-criar-meta"> {/* Aplicamos a classe .card */}
+          <FormCriarMeta
+            clienteId={utilizador.id}
+            onMetaCriada={() => {
+              refreshMetas();
+              setMostrarFormCriar(false);
+            }}
+          />
+        </div>
       )}
 
-      <hr />
-
-      {/* Lista de Metas (sem mudança) */}
-      <h3>As Minhas Metas</h3>
-      <ul style={{ listStyleType: 'none', padding: 0 }}>
+      {/* 3. Lista de Metas */}
+      <ul className="metas-list">
         {metasOrdenadas.length > 0 ? (
           metasOrdenadas.map(meta => (
-            <MetaItem 
+            <MetaItem
               key={meta.id}
               meta={meta}
-              contasCorrente={contas}
+              contasCorrente={contas.filter(c => c.tipoConta === 'CONTA_CORRENTE')}
               clienteId={utilizador.id}
-              onTransferenciaFeita={refreshAposTransferencia} // O "master refresh"
+              onTransferenciaFeita={() => {
+                refreshMetas();
+                refreshContas(); // Atualiza contas e metas após transferência
+              }}
             />
           ))
         ) : (
-          <p>Nenhuma meta encontrada.</p>
+          <p>Nenhuma meta encontrada. Crie sua primeira meta!</p>
         )}
       </ul>
-
-    </div>
+    </>
   );
 }
 

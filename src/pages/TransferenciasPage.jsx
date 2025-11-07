@@ -1,14 +1,12 @@
 // src/pages/TransferenciasPage.jsx
 
 import React, { useState, useMemo } from 'react';
-import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import FormFazerTransferencia from '../components/FormFazerTransferencia';
 
-// 1. NOVA FUNÇÃO DE AJUDA para formatar a data
+// Função de AJUDA para formatar a data (sem mudança)
 function formatarData(dataISO) {
   if (!dataISO) return '';
-  // Converte para o formato local (ex: 19/10/2025, 18:30)
   return new Date(dataISO).toLocaleString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
@@ -19,21 +17,21 @@ function formatarData(dataISO) {
 }
 
 function TransferenciasPage() {
-  // ... (hooks e estados - sem mudança) ...
   const { 
-    contas, 
-    metas, 
+    contas, // Precisamos do nome das contas
     transacoes, 
     loading, 
-    refreshAposTransferencia 
+    refreshDadosTransacao // Usamos a função de refresh mais completa
   } = useData();
-  const { utilizador } = useAuth();
-  const [mostrarTodas, setMostrarTodas] = useState(false);
 
-  // ... (lógica de useMemo - sem mudança) ...
+  // --- ESTADOS DA PÁGINA ---
+  const [mostrarTodas, setMostrarTodas] = useState(false);
+  const [mostrarForm, setMostrarForm] = useState(false); // NOVO ESTADO
+
+  // Lógica de filtragem e ordenação (sem mudança)
   const transferenciasOrdenadas = useMemo(() => {
     return transacoes
-      .filter(t => t.nomeCategoria === 'Transferências')
+      .filter(t => t.nomeCategoria === 'Transferências') //
       .sort((a, b) => new Date(b.dataOperacao) - new Date(a.dataOperacao)); 
   }, [transacoes]);
 
@@ -41,81 +39,98 @@ function TransferenciasPage() {
     if (mostrarTodas) {
       return transferenciasOrdenadas;
     }
-    return transferenciasOrdenadas.slice(0, 5);
-  }, [mostrarTodas, transferenciasOrdenadas]);
+    return transferenciasOrdenadas.slice(0, 10);
+  }, [transferenciasOrdenadas, mostrarTodas]);
 
+  // Mapa para consulta rápida do nome da conta
+  const mapContas = useMemo(() => 
+    new Map(contas.map(c => [c.id, c.nome])), 
+  [contas]);
 
   if (loading) {
     return <div>A carregar dados...</div>;
   }
 
+  // --- O NOVO JSX ESTILIZADO ---
   return (
-    <div>
-      <h2>Realizar Transferências</h2>
-      {/* ... (formulário - sem mudança) ... */}
-      <FormFazerTransferencia
-        clienteId={utilizador.id}
-        contasCorrente={contas}
-        metas={metas}
-        onTransferenciaFeita={refreshAposTransferencia}
-      />
+    <>
+      {/* 1. Cabeçalho da Página */}
+      <div className="page-header">
+        <h2>Transferências entre Contas</h2>
+        <button
+          onClick={() => setMostrarForm(!mostrarForm)}
+          className={`btn ${mostrarForm ? 'btn-secondary' : 'btn-primary'}`}
+        >
+          {mostrarForm ? 'Fechar Formulário' : 'Fazer Transferência'}
+        </button>
+      </div>
 
-      <hr />
+      {/* 2. Formulário de "Fazer Transferência" (que abre e fecha) */}
+      {mostrarForm && (
+        <div className="card"> {/* O formulário já tem padding interno */}
+          <FormFazerTransferencia
+            onTransferenciaFeita={() => {
+              refreshDadosTransacao(); // Atualiza tudo
+              setMostrarForm(false);
+            }}
+          />
+        </div>
+      )}
 
-      <h3>Últimas Transferências Realizadas</h3>
-      <ul style={{ listStyleType: 'none', padding: 0 }}>
+      {/* 3. A Lista de Transações (Refatorada com classes) */}
+      <ul className="transacoes-list">
         {visibleTransferencias.length > 0 ? (
-          visibleTransferencias.map(transacao => (
-            // 2. O <li> AGORA USA FLEXBOX
-            <li 
-              key={transacao.id} 
-              style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', // Joga o conteúdo para as pontas
-                alignItems: 'center', // Alinha verticalmente
-                marginBottom: '10px',
-                borderBottom: '1px solid #eee',
-                paddingBottom: '10px'
-              }}
-            >
-              {/* Div da Esquerda (Informações) */}
-              <div>
-                <strong>{transacao.descricao}</strong>
-                <br />
-                {transacao.valor > 0 ? (
-                  <span style={{ color: 'green' }}> {/* Cor para clareza */}
-                    Tipo: Entrada | Valor: R$ {transacao.valor.toFixed(2)}
-                  </span>
-                ) : (
-                  <span style={{ color: 'red' }}> {/* Cor para clareza */}
-                    Tipo: Saída | Valor: R$ {transacao.valor.toFixed(2)}
-                  </span>
-                )}
-                <br />
-                <span>(Conta: {transacao.nomeConta})</span>
-              </div>
+          visibleTransferencias.map(transacao => {
+            
+            // LÓGICA CORRIGIDA: Usamos o 'tipo' da transação
+            // (O seu código original usava transacao.valor > 0)
+            const isReceita = transacao.tipo === 'RECEITA'; 
+            const nomeConta = mapContas.get(transacao.contaId) || 'Conta Deletada';
 
-              {/* 3. Div da Direita (Data e Hora) */}
-              <div style={{ textAlign: 'right', minWidth: '120px' }}>
-                <span style={{ fontSize: '0.9em', color: '#555' }}>
-                  {formatarData(transacao.dataOperacao)}
-                </span>
-              </div>
-            </li>
-          ))
+            return (
+              <li key={transacao.id} className="transacao-item">
+                
+                {/* Ícone (Esquerda) */}
+                <div className={`transacao-icon ${isReceita ? 'receita' : 'despesa'}`}>
+                  {isReceita ? 'E' : 'S'} {/* E = Entrada, S = Saída */}
+                </div>
+
+                {/* Detalhes (Meio) */}
+                <div className="transacao-detalhes">
+                  <strong>
+                    {isReceita ? 'Entrada de Transferência' : 'Saída de Transferência'}
+                  </strong>
+                  <p>Conta: {nomeConta}</p>
+                </div>
+
+                {/* Valor e Data (Direita) */}
+                <div className="transacao-info">
+                  <div className={`transacao-valor ${isReceita ? 'receita' : 'despesa'}`}>
+                    {isReceita ? '+' : '-'} R$ {transacao.valor.toFixed(2)}
+                  </div>
+                  <div className="transacao-data">
+                    {formatarData(transacao.dataOperacao)}
+                  </div>
+                </div>
+              </li>
+            );
+          })
         ) : (
-          <p>Nenhuma transferência encontrada.</p>
+          <li className="empty-state" style={{ padding: '2rem' }}>
+            Nenhuma transferência encontrada.
+          </li>
         )}
       </ul>
 
-      {/* ... (botão "Mostrar todas" - sem mudança) ... */}
-      {transferenciasOrdenadas.length > 5 && (
-        <button onClick={() => setMostrarTodas(!mostrarTodas)}>
-          {mostrarTodas ? 'Mostrar menos' : `Mostrar todas (${transferenciasOrdenadas.length})`}
-        </button>
+      {/* Botão "Mostrar Todas" */}
+      {transferenciasOrdenadas.length > 10 && (
+        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+          <button onClick={() => setMostrarTodas(!mostrarTodas)} className="btn btn-secondary">
+            {mostrarTodas ? 'Mostrar menos' : `Mostrar todas (${transferenciasOrdenadas.length})`}
+          </button>
+        </div>
       )}
-
-    </div>
+    </>
   );
 }
 

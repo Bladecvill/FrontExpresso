@@ -1,73 +1,72 @@
 // src/pages/ContasPage.jsx
 
-import React, { useState } from 'react'; // 1. IMPORTAR useState
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import FormCriarConta from '../components/FormCriarConta';
+import FormCriarConta from '../components/FormCriarConta'; //
 
 function ContasPage() {
-  const { 
-    contas, 
-    loading, 
-    refreshContas
-  } = useData();
-  const { utilizador } = useAuth();
-
-  // 2. NOVO ESTADO para controlar o formulário
-  const [mostrarForm, setMostrarForm] = useState(false);
+  const { contas, loading, refreshContas } = useData(); //
+  const { utilizador } = useAuth(); //
+  const [mostrarForm, setMostrarForm] = useState(false); //
 
   if (loading) {
     return <div>A carregar dados...</div>;
   }
 
   return (
-    <div>
-      <h2>Gestão de Contas Corrente</h2>
+    <>
+      {/* 1. Cabeçalho da Página */}
+      <div className="page-header">
+        <h2>Gestão de Contas Corrente</h2>
+        <button
+          onClick={() => setMostrarForm(!mostrarForm)}
+          className={`btn ${mostrarForm ? 'btn-secondary' : 'btn-primary'}`}
+        >
+          {mostrarForm ? 'Fechar Formulário' : 'Adicionar Nova Conta'}
+        </button>
+      </div>
 
-      <p>Adicione novas contas (ex: Nubank, Bradesco) ou visualize os saldos das suas contas existentes. O "Card de Saldo Total" (acima) soma todas estas contas.</p>
-
-      <hr />
-
-      {/* 3. NOVO BOTÃO para mostrar/esconder */}
-      <button onClick={() => setMostrarForm(!mostrarForm)}>
-        {mostrarForm ? 'Fechar Formulário' : 'Adicionar Nova Conta'}
-      </button>
-
-      {/* 4. O FORMULÁRIO AGORA É CONDICIONAL */}
+      {/* 2. Formulário de "Criar Conta" (que abre e fecha) */}
       {mostrarForm && (
-        <FormCriarConta
-          clienteId={utilizador.id}
-          // 5. ATUALIZADO: Fecha o form após o sucesso
-          onContaCriada={() => {
-            refreshContas();
-            setMostrarForm(false); 
-          }} 
-        />
+        <div className="card form-criar-conta"> {/* Aplicamos a classe .card */}
+          <FormCriarConta
+            clienteId={utilizador.id}
+            onContaCriada={() => {
+              refreshContas();
+              setMostrarForm(false);
+            }}
+          />
+        </div>
       )}
 
-      <hr />
-
-      {/* A lista de contas (sem mudança) */}
-      <h3>As Minhas Contas</h3>
-      <ul style={{ listStyleType: 'none', padding: 0 }}>
+      {/* 3. Lista de Contas (Grid de Cards) */}
+      <ul className="contas-list">
         {contas.length > 0 ? (
           contas.map(conta => (
-            <li key={conta.id} style={{ borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '10px' }}>
-              <strong style={{ fontSize: '1.2em' }}>{conta.nome}</strong>
-              <br />
-              <span>Saldo Atual: R$ {conta.saldoAtual.toFixed(2)}</span>
-              <br />
-              <span style={{ fontSize: '0.9em', color: '#555' }}>
+            // O Card de Conta Individual
+            <li key={conta.id} className="conta-item-card">
+              <div className="conta-item-header">
+                <h3>{conta.nome}</h3>
+                <span>{conta.tipoConta.replace('_', ' ')}</span>
+              </div>
+              <p className="conta-item-saldo">
+                R$ {conta.saldoAtual.toFixed(2)}
+              </p>
+              <p className="conta-item-detalhe">
                 (Saldo de Abertura: R$ {conta.saldoAbertura.toFixed(2)})
-              </span>
+              </p>
             </li>
           ))
         ) : (
-          <p>Nenhuma conta corrente encontrada (além da "Carteira" padrão).</p>
+          !mostrarForm && (
+            <p className="empty-state">
+              Nenhuma conta encontrada. Comece adicionando uma nova conta!
+            </p>
+          )
         )}
       </ul>
-
-    </div>
+    </>
   );
 }
 

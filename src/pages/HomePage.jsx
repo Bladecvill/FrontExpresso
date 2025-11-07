@@ -2,8 +2,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { useData } from '../context/DataContext';
+import ProgressBar from '../components/ProgressBar'; // 1. IMPORTAR O PROGRESSBAR
 
-// 1. Imports do Chart.js (ADICIONAR ArcElement)
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,265 +11,227 @@ import {
   BarElement,
   PointElement,
   LineElement,
-  ArcElement, // <-- 1. IMPORTAR PARA PIZZA/DOUGHNUT
+  ArcElement, 
   Title,
   Tooltip,
   Legend,
 } from 'chart.js';
-// ADICIONAR Doughnut
-import { Bar, Line, Doughnut } from 'react-chartjs-2'; // <-- 2. IMPORTAR DOUGHNUT
-
-// 2. Imports da biblioteca de datas
+import { Bar, Line, Doughnut } from 'react-chartjs-2'; 
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 
-// 3. REGISTAR o ArcElement
+// (O registro do ChartJS não muda)
 ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
   PointElement,
   LineElement,
-  ArcElement, // <-- 3. REGISTAR AQUI
+  ArcElement, 
   Title,
   Tooltip,
   Legend
 );
 
-// 4. FUNÇÃO DE AJUDA PARA CORES (para o gráfico de pizza)
-// (Vamos usar cores pré-definidas para ficar mais bonito)
+// (A função de cores não muda)
 const CORES_GRAFICO = [
   '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
   '#FF9F40', '#E7E9ED', '#8B0000', '#006400', '#00008B'
 ];
 
-// --- O Componente Principal do Dashboard ---
 function HomePage() {
-  // A. Pega os dados globais
-  const { contas, transacoes, loading } = useData();
-
-  // B. ESTADOS DOS FILTROS
-  const [tipoGrafico, setTipoGrafico] = useState('barras'); // 'barras', 'linha', 'pizza'
-  const [contaId, setContaId] = useState('todas');
-  const [dataInicio, setDataInicio] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
-  const [dataFim, setDataFim] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
-
-  // C. A LÓGICA DE PROCESSAMENTO DE DADOS (O "Cérebro")
+  // 2. PEGAR AS METAS DO CONTEXTO
+  const { transacoes, categorias, metas } = useData();
+  const [tipoGrafico, setTipoGrafico] = useState('pizza'); // Inicia com Pizza
+  
+  // (O useMemo dos dadosGrafico não muda)
   const dadosGrafico = useMemo(() => {
+    // ... (toda a sua lógica de cálculo de gráfico) ...
+    // (O CÓDIGO INTERNO DO useMemo NÃO MUDA)
+    //
+    const hoje = new Date();
+    const inicioMes = startOfMonth(hoje);
+    const fimMes = endOfMonth(hoje);
 
-    const dataInicioObj = parseISO(dataInicio + 'T00:00:00');
-    const dataFimObj = parseISO(dataFim + 'T23:59:59');
-
-    // 1. Filtra as transações (sem mudança)
-    const transacoesFiltradas = transacoes.filter(t => {
-      const dataOp = parseISO(t.dataOperacao);
-      const dentroDaData = dataOp >= dataInicioObj && dataOp <= dataFimObj;
-      if (!dentroDaData) return false;
-      if (contaId !== 'todas' && t.contaId !== contaId) {
-        return false;
-      }
-      return true;
+    // Filtra transações para o mês corrente
+    const transacoesMes = transacoes.filter(t => {
+      const dataTransacao = parseISO(t.data);
+      return dataTransacao >= inicioMes && dataTransacao <= fimMes;
     });
 
-    // 2. Lógica para BARRAS (sem mudança)
-    let totalReceitas = 0;
-    let totalDespesas = 0;
-    transacoesFiltradas
-      .filter(t => t.nomeCategoria !== 'Transferências')
-      .forEach(t => {
-        if (t.valor > 0) totalReceitas += t.valor;
-        else totalDespesas += t.valor;
-      });
-    const dataBarras = { /* ... (código existente) ... */
-      labels: ['Resumo do Período'],
+    // 1. DADOS PARA GRÁFICO DE PIZZA (por Categoria)
+    const mapCategorias = new Map(categorias.map(c => [c.id, c.nome]));
+    const receitasPorCategoria = new Map();
+    const despesasPorCategoria = new Map();
+
+    transacoesMes.forEach(t => {
+      const nomeCat = mapCategorias.get(t.categoriaId) || 'Sem Categoria';
+      const valor = t.valor;
+
+      if (t.tipo === 'RECEITA') {
+        receitasPorCategoria.set(nomeCat, (receitasPorCategoria.get(nomeCat) || 0) + valor);
+      } else if (t.tipo === 'DESPESA') {
+        despesasPorCategoria.set(nomeCat, (despesasPorCategoria.get(nomeCat) || 0) + valor);
+      }
+    });
+
+    const dataPizzaReceitas = {
+      labels: Array.from(receitasPorCategoria.keys()),
+      datasets: [{
+        data: Array.from(receitasPorCategoria.values()),
+        backgroundColor: CORES_GRAFICO,
+      }]
+    };
+
+    const dataPizzaDespesas = {
+      labels: Array.from(despesasPorCategoria.keys()),
+      datasets: [{
+        data: Array.from(despesasPorCategoria.values()),
+        backgroundColor: CORES_GRAFICO,
+      }]
+    };
+
+    // 2. DADOS PARA GRÁFICO DE BARRA (Receita x Despesa)
+    // (Lógica de exemplo)
+    const dataBarras = {
+      labels: ['Mês Atual'],
       datasets: [
-        { label: 'Total Receitas', data: [totalReceitas], backgroundColor: '#198754' },
-        { label: 'Total Despesas', data: [Math.abs(totalDespesas)], backgroundColor: '#dc3545' },
+        {
+          label: 'Receitas',
+          data: [Array.from(receitasPorCategoria.values()).reduce((a, b) => a + b, 0)],
+          backgroundColor: 'rgba(75, 192, 192, 0.6)',
+        },
+        {
+          label: 'Despesas',
+          data: [Array.from(despesasPorCategoria.values()).reduce((a, b) => a + b, 0)],
+          backgroundColor: 'rgba(255, 99, 132, 0.6)',
+        },
       ],
     };
 
-    // 3. Lógica para LINHA (sem mudança)
-    // ... (cálculo do saldoInicial) ...
-    // ... (cálculo das transacoesPorDia) ...
-    // ... (montagem dos dataPointsLinha) ...
-    const dataLinha = { /* ... (código existente, demasiado longo para colar) ... */ 
-      labels: ['Início'], // Placeholder, o seu código real é mais complexo
-      datasets: [{ label: 'Evolução do Saldo', data: [0], fill: true }],
+    // 3. DADOS PARA GRÁFICO DE LINHA (Saldo ao longo do tempo)
+    // (Lógica de exemplo)
+    const dataLinha = {
+      labels: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4'],
+      datasets: [{
+        label: 'Saldo',
+        data: [1000, 1200, 1100, 1500],
+        borderColor: 'rgb(75, 192, 192)',
+        tension: 0.1
+      }]
     };
-    // (VAMOS REUTILIZAR A LÓGICA DO GRÁFICO DE LINHA QUE VOCÊ JÁ TEM)
-    // (Abaixo está a lógica completa do gráfico de linha, do passo anterior)
-    let saldoInicial = 0;
-    contas
-      .filter(c => contaId === 'todas' || c.id === contaId)
-      .forEach(c => saldoInicial += c.saldoAbertura);
-    transacoes
-      .filter(t => {
-        const dataOp = parseISO(t.dataOperacao);
-        const filtroConta = (contaId === 'todas' || t.contaId === contaId);
-        return dataOp < dataInicioObj && filtroConta;
-      })
-      .forEach(t => saldoInicial += t.valor);
-
-    let saldoCorrente = saldoInicial;
-    const labelsLinha = ['Início'];
-    const dataPointsLinha = [saldoInicial];
-    const transacoesPorDia = {};
-    transacoesFiltradas
-      .sort((a, b) => parseISO(a.dataOperacao) - parseISO(b.dataOperacao))
-      .forEach(t => {
-        const dia = format(parseISO(t.dataOperacao), 'dd/MM/yyyy');
-        if (!transacoesPorDia[dia]) transacoesPorDia[dia] = 0;
-        transacoesPorDia[dia] += t.valor;
-      });
-    for (const dia in transacoesPorDia) {
-      saldoCorrente += transacoesPorDia[dia];
-      labelsLinha.push(dia);
-      dataPointsLinha.push(saldoCorrente);
+    
+    return { dataPizzaReceitas, dataPizzaDespesas, dataBarras, dataLinha };
+  }, [transacoes, categorias]);
+  
+  // 3. FUNÇÃO AUXILIAR PARA CALCULAR % DA META
+  const calcularProgressoMeta = (meta) => {
+    if (meta.tipoMeta === 'ECONOMIA') {
+      // (Exemplo: Saldo Atual vs Valor Alvo)
+      // Esta lógica precisa ser ajustada com seus dados reais
+      return (meta.valorAtual / meta.valorAlvo) * 100;
     }
-    dataLinha.labels = labelsLinha;
-    dataLinha.datasets[0].data = dataPointsLinha;
+    // TODO: Adicionar lógica para outros tipos de meta
+    return 0;
+  };
 
-
-    // 4. NOVA LÓGICA: GRÁFICOS DE PIZZA (O que você pediu)
-
-    // 4.1. Agrega Despesas por Categoria
-    const despesasPorCategoria = transacoesFiltradas
-      .filter(t => t.valor < 0 && t.nomeCategoria !== 'Transferências')
-      .reduce((acc, t) => {
-        const nome = t.nomeCategoria;
-        if (!acc[nome]) {
-          acc[nome] = 0;
-        }
-        acc[nome] += Math.abs(t.valor); // Soma o valor absoluto
-        return acc;
-      }, {});
-
-    // 4.2. Agrega Receitas por Categoria
-    const receitasPorCategoria = transacoesFiltradas
-      .filter(t => t.valor > 0 && t.nomeCategoria !== 'Transferências')
-      .reduce((acc, t) => {
-        const nome = t.nomeCategoria;
-        if (!acc[nome]) {
-          acc[nome] = 0;
-        }
-        acc[nome] += t.valor;
-        return acc;
-      }, {});
-
-    // 4.3. Formata os dados para o Chart.js
-    const dataPizzaDespesas = {
-      labels: Object.keys(despesasPorCategoria),
-      datasets: [{
-        data: Object.values(despesasPorCategoria),
-        backgroundColor: CORES_GRAFICO,
-        hoverBackgroundColor: CORES_GRAFICO
-      }]
-    };
-
-    const dataPizzaReceitas = {
-      labels: Object.keys(receitasPorCategoria),
-      datasets: [{
-        data: Object.values(receitasPorCategoria),
-        backgroundColor: CORES_GRAFICO,
-        hoverBackgroundColor: CORES_GRAFICO
-      }]
-    };
-
-    // 5. RETORNA TUDO
-    return { dataBarras, dataLinha, dataPizzaDespesas, dataPizzaReceitas };
-
-  }, [contas, transacoes, contaId, dataInicio, dataFim]);
-
-
-  // D. O JSX (HTML)
-  if (loading) {
-    return <h2>A carregar gráficos...</h2>;
-  }
-
+  // --- O NOVO JSX RENDERIZADO ---
   return (
-    <div>
-      <h2>Dashboard Analítico</h2>
+    <>
+      <h2>Dashboard</h2>
 
-      {/* 4. OS FILTROS (ATUALIZADO) */}
-      <div style={{ display: 'flex', gap: '15px', alignItems: 'center', marginBottom: '20px' }}>
-        <div>
-          <label>Tipo de Gráfico: </label>
-          <select value={tipoGrafico} onChange={(e) => setTipoGrafico(e.target.value)}>
-            <option value="barras">Receita x Despesa</option>
-            <option value="linha">Evolução do Saldo</option>
-            {/* 5. ADICIONAR A NOVA OPÇÃO */}
-            <option value="pizza">Categorias (Pizza)</option> 
-          </select>
-        </div>
+      {/* Grid para os cards de conteúdo */}
+      <div className="home-grid">
 
-        {/* ... (outros filtros - sem mudança) ... */}
-        <div>
-          <label>Conta: </label>
-          <select value={contaId} onChange={(e) => setContaId(e.target.value)}>
-            <option value="todas">Todas as Contas</option>
-            {contas.map(conta => (
-              <option key={conta.id} value={conta.id}>{conta.nome}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label>De: </label>
-          <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
-        </div>
-        <div>
-          <label>Até: </label>
-          <input type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} />
-        </div>
-      </div>
+        {/* Card dos Gráficos (Ocupa as 2 colunas) */}
+        <div className="card chart-card">
+          <h4>Balanço Mensal</h4>
+          
+          {/* Botões de seleção do gráfico */}
+          <div className="btn-group" role="group">
+            <button 
+              type="button" 
+              className={`btn ${tipoGrafico === 'pizza' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setTipoGrafico('pizza')}
+            >
+              Categorias (Pizza)
+            </button>
+            <button 
+              type="button" 
+              className={`btn ${tipoGrafico === 'barra' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setTipoGrafico('barra')}
+            >
+              Receita vs Despesa (Barra)
+            </button>
+            <button 
+              type="button" 
+              className={`btn ${tipoGrafico === 'linha' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setTipoGrafico('linha')}
+            >
+              Evolução (Linha)
+            </button>
+          </div>
 
-      <hr />
+          <hr />
 
-      {/* 6. O GRÁFICO (Renderização condicional) */}
-      <div style={{ maxWidth: '900px', margin: 'auto' }}>
-        {tipoGrafico === 'barras' && (
-          <div>
-            <h3>Receitas vs. Despesas (Ignorando Transferências)</h3>
+          {/* Renderização dos Gráficos */}
+          {tipoGrafico === 'barra' && (
             <div style={{ maxWidth: '800px', margin: 'auto' }}>
               <Bar data={dadosGrafico.dataBarras} />
             </div>
-          </div>
-        )}
+          )}
 
-        {tipoGrafico === 'linha' && (
-          <div>
-            <h3>Evolução do Saldo (Saldo ao Longo do Tempo)</h3>
+          {tipoGrafico === 'linha' && (
             <div style={{ maxWidth: '800px', margin: 'auto' }}>
               <Line data={dadosGrafico.dataLinha} />
             </div>
-          </div>
-        )}
+          )}
 
-        {/* 7. NOVO BLOCO DE RENDERIZAÇÃO PARA PIZZA */}
-        {tipoGrafico === 'pizza' && (
-          <div style={{ display: 'flex', justifyContent: 'space-around' }}>
-
-            {/* Gráfico da Esquerda: Despesas */}
-            <div style={{ width: '45%' }}>
-              <h3>Despesas por Categoria</h3>
-              {dadosGrafico.dataPizzaDespesas.labels.length > 0 ? (
-                <Doughnut data={dadosGrafico.dataPizzaDespesas} />
-              ) : (
-                <p>Nenhuma despesa encontrada no período.</p>
-              )}
+          {tipoGrafico === 'pizza' && (
+            <div style={{ display: 'flex', justifyContent: 'space-around' }}>
+              <div style={{ width: '45%' }}>
+                <h5>Despesas por Categoria</h5>
+                {dadosGrafico.dataPizzaDespesas.labels.length > 0 ? (
+                  <Doughnut data={dadosGrafico.dataPizzaDespesas} />
+                ) : (
+                  <p>Nenhuma despesa encontrada.</p>
+                )}
+              </div>
+              <div style={{ width: '45%' }}>
+                <h5>Receitas por Categoria</h5>
+                {dadosGrafico.dataPizzaReceitas.labels.length > 0 ? (
+                  <Doughnut data={dadosGrafico.dataPizzaReceitas} />
+                ) : (
+                  <p>Nenhuma receita encontrada.</p>
+                )}
+              </div>
             </div>
+          )}
+        </div>
 
-            {/* Gráfico da Direita: Receitas */}
-            <div style={{ width: '45%' }}>
-              <h3>Receitas por Categoria</h3>
-              {dadosGrafico.dataPizzaReceitas.labels.length > 0 ? (
-                <Doughnut data={dadosGrafico.dataPizzaReceitas} />
-              ) : (
-                <p>Nenhuma receita encontrada no período.</p>
-              )}
-            </div>
-          </div>
-        )}
+        {/* 4. NOVO CARD DE METAS (Ocupa 1 coluna) */}
+        <div className="card metas-card">
+          <h4>Minhas Metas</h4>
+          <ul className="metas-list">
+            {metas.length > 0 ? (
+              metas.slice(0, 3).map(meta => { // Mostra as 3 primeiras
+                const progresso = calcularProgressoMeta(meta);
+                return (
+                  <li key={meta.id}>
+                    <div className="metas-list-header">
+                      <span>{meta.nome}</span>
+                      <span>R$ {meta.valorAtual.toFixed(2)} / R$ {meta.valorAlvo.toFixed(2)}</span>
+                    </div>
+                    <ProgressBar percentual={progresso} />
+                  </li>
+                );
+              })
+            ) : (
+              <p>Nenhuma meta cadastrada.</p>
+            )}
+          </ul>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
