@@ -13,7 +13,7 @@ import TransacoesPage from "./pages/TransacoesPage";
 import MetasPage from "./pages/MetasPage";
 import TransferenciasPage from "./pages/TransferenciasPage";
 import PerfilPage from "./pages/PerfilPage";
-
+import RelatoriosPage from "./pages/RelatoriosPage";
 // --- Páginas Deslogadas ---
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -68,10 +68,13 @@ function App() {
         <Route path="transferencias" element={<TransferenciasPage />} />{" "}
         {/* URL: /transferencias */}
         <Route path="perfil" element={<PerfilPage />} /> {/* URL: /perfil */}
+        <Route path="relatorios" element={<RelatoriosPage />} />{" "}
+        {/* URL: /relatorios */}
       </Route>
+      
 
       {/* --- ROTAS PÚBLICAS (Área Deslogada) --- */}
-      
+
       {/* MUDANÇA 1: A rota /login agora renderiza SÓ o LoginPage */}
       <Route
         path="/login"
@@ -94,6 +97,26 @@ function App() {
 
       {/* Rota "Pega-Tudo" (404 Not Found) */}
       <Route path="*" element={<Navigate to="/" />} />
+
+      <Route
+        path="/"
+        element={
+          <PrivateRoute>
+            <MainLayout />
+          </PrivateRoute>
+        }
+      >
+        {" "}
+        {/* Rotas "filhas" do MainLayout */}{" "}
+        <Route index element={<HomePage />} />{" "}
+        <Route path="contas" element={<ContasPage />} />{" "}
+        <Route path="transacoes" element={<TransacoesPage />} />{" "}
+        <Route path="metas" element={<MetasPage />} />{" "}
+        <Route path="transferencias" element={<TransferenciasPage />} />{" "}
+        <Route path="perfil" element={<PerfilPage />} />{" "}
+        <Route path="relatorios" element={<RelatoriosPage />} />{" "}
+        {/* <-- 2. ADICIONE ESTA LINHA */}{" "}
+      </Route>
     </Routes>
   );
 }

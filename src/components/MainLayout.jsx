@@ -1,22 +1,44 @@
 // src/components/MainLayout.jsx
 
-import React from 'react';
+import React from "react";
 // 1. IMPORTAR NavLink para o estilo de link "ativo"
-import { Outlet, NavLink } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import CardsResumoContainer from './CardsResumoContainer'; //
+import { Outlet, NavLink } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import CardsResumoContainer from "./CardsResumoContainer"; //
 
 function MainLayout() {
   const { utilizador, logout } = useAuth(); //
 
   return (
     <div className="app-layout">
-      
       {/* 1. SIDEBAR (Menu de Navegação) */}
       <nav className="app-sidebar">
         <div className="sidebar-header">
           <h2>Expresso Finance</h2>
         </div>
+
+        <nav className={styles.navArea}>
+          <ul className={styles.navTabs}>
+            <li>
+              <NavLink to="/" end className={getNavLinkClass}>
+                Dashboard
+              </NavLink>
+            </li>
+            {/* ... (Links de Contas, Transações, Metas, Transferências) ... */}
+            <li>
+              <NavLink to="/perfil" className={getNavLinkClass}>
+                Perfil
+              </NavLink>
+            </li>
+
+            {/* 1. ADICIONE ESTE BLOCO <li> ... </li> */}
+            <li>
+              <NavLink to="/relatorios" className={getNavLinkClass}>
+                Relatórios
+              </NavLink>
+            </li>
+          </ul>
+        </nav>
 
         <div className="sidebar-nav">
           {/* Usamos NavLink em vez de Link para a classe "active" */}
@@ -39,7 +61,7 @@ function MainLayout() {
             Perfil
           </NavLink>
         </div>
-        
+
         <div className="sidebar-footer">
           <button onClick={logout} className="btn btn-logout">
             Sair (Logout)
@@ -49,19 +71,17 @@ function MainLayout() {
 
       {/* 2. ÁREA DE CONTEÚDO (Header + Página) */}
       <div className="app-content-wrapper">
-        
         {/* 2a. Header (Saudação + Cards) */}
         <header className="app-header">
           <h2>Olá, {utilizador.nome}!</h2>
           {/* O container de cards agora fica aqui dentro */}
-          <CardsResumoContainer /> 
+          <CardsResumoContainer />
         </header>
 
         {/* 2b. Conteúdo da Página (renderizado pelo <Outlet>) */}
         <main className="app-content">
           <Outlet /> {/* HomePage, ContasPage, etc. aparecem aqui */}
         </main>
-        
       </div>
     </div>
   );
